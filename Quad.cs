@@ -1,13 +1,14 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 /// <summary>
 /// Copyright (c) Cristian Cozma 2024. Licensed under MIT License.
 /// 
 /// A light weight library for double double arithmetic.
-/// It can incorporate any built in data types including decimal.
+/// It can incorporate any built in numeric data type, including decimal.
 /// Unlike any other libraries, it uses a new class of EFT's :
 /// Fused Error Free Transformations (FEFT).
 /// </summary>
@@ -118,7 +119,7 @@ namespace Sabs.Numerics
             return v + q.ToLong();
         }
 
-        public static explicit operator decimal(Quad q)
+        public static decimal ToDecimal(Quad q, int decimals)
         {
             double v = Log2(q.h);
             long h, l;
@@ -127,6 +128,8 @@ namespace Sabs.Numerics
             {
                 n -= (int)((v + 0.42198608378962976) * 0.3010299956639812);
             }
+            if (n > decimals) n = decimals;
+
             int s = q.h < 0 ? -5 : 5;
             q.Scale(Pow2(n - 43));
             q *= Pow((double)s, n);
@@ -135,7 +138,7 @@ namespace Sabs.Numerics
             v = (q.h - h + q.l);
 
             // check for underestimate
-            if (n < 28 && (h < 0x3333333333333L ||
+            if (n < decimals && (h < 0x3333333333333L ||
                 (h == 0x3333333333333L && v < 0.199999999999994321)))
             {
                 h *= 10;
@@ -149,7 +152,12 @@ namespace Sabs.Numerics
             l = (long)Math.Round(v * 8796093022208.0);
             h = (h << 11) + (l >> 32);
 
-            return new decimal(unchecked((int)l), unchecked((int)h), (int)(h >> 32), s < 0, n < 0 ? (byte)sbyte.MaxValue : (byte)n);
+            return new decimal(unchecked((int)l), unchecked((int)h), (int)(h >> 32), s < 0, (byte)n);
+        }
+
+        public static explicit operator decimal(Quad q)
+        {
+            return ToDecimal(q, 28);
         }
 
         public static implicit operator Quad(double v)
@@ -184,10 +192,8 @@ namespace Sabs.Numerics
             int n = i[3] >> 16;
             //uint[] b = (uint[])(object)i;
 
-            Quad r;
-            r.h = unchecked(((long)(uint)i[2] << 21) + ((uint)i[1] >> 11)) * 8796093022208.0;
-            r.l = unchecked(((long)(i[1] & 0x7ff) << 32) + (uint)i[0]);
-            return r * Pow(n < 0 ? -10 : 10, -(n & sbyte.MaxValue));
+            return new Quad(unchecked(((long)(uint)i[2] << 21) + ((uint)i[1] >> 11)) * 8796093022208.0,
+            unchecked(((long)(i[1] & 0x7ff) << 32) + (uint)i[0])) * Pow(n < 0 ? -10 : 10, -(n & sbyte.MaxValue));
         }
 
         public override bool Equals(object obj)
@@ -234,6 +240,7 @@ namespace Sabs.Numerics
             return 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad operator +(Quad q, double v)
         {
             Quad r;
@@ -244,6 +251,7 @@ namespace Sabs.Numerics
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad operator -(Quad q, double v)
         {
             Quad r;
@@ -254,6 +262,7 @@ namespace Sabs.Numerics
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad operator +(Quad q, Quad v)
         {
             Quad r;
@@ -265,6 +274,7 @@ namespace Sabs.Numerics
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad operator -(Quad q, Quad v)
         {
             Quad r;
