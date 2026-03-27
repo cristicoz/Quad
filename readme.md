@@ -17,3 +17,46 @@ Subnormal	Pow2(Log2(Epsilon * 3))	Bit-identical (h/l)	PASSED
 Boundary	long.MaxValue + 0.999...16	Preserves 106-bit limit	PASSED
 The FEFT Advantage
 At its core, Quad replaces "cosmetic" normalization with raw error-bit conservation. The 10-operation DWPlusDW kernel creates an aggressive self-correcting accumulator. This makes it the ideal engine for N-body physical simulations, massive financial aggregations, and high-fidelity engineering where performance and bit-integrity are paramount.
+
+Some examples
+the clasical :
+
+0.1 + 0.2
+0.30000000000000004
+
+(Quad)0.1 + 0.2
+"0.300000000000000016653345369377348"
+    h: 0.30000000000000004
+    l: -2.7755575615628914E-17
+
+(Quad)0.1m + (Quad)0.2m
+"0.3"
+    h: 0.3
+    l: 1.1102230246251566E-17
+    
+new Quad("0.1") + new Quad("0.2")
+"0.3"
+    h: 0.3
+    l: 1.1102230246251566E-17
+    
+new Quad("0.1") + new Quad("0.2") + 0.5e-33
+"0.3"
+    h: 0.3
+    l: 1.1102230246251566E-17
+    
+new Quad("0.1") + new Quad("0.2") + 1e-33
+"0.300000000000000000000000000000002"
+    h: 0.3
+    l: 1.1102230246251568E-17
+
+testing the limits :
+    
+((Quad)1.0 + 1e-324) - 1.0
+"0"
+    h: 0
+    l: 0
+    
+((Quad)1.0 + 1e-323) - 1.0
+"9.88131291682493E-324"
+    h: 0
+    l: 9.8813129168249309E-324
