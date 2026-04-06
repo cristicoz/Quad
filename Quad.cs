@@ -656,11 +656,12 @@ namespace Sabs.Numerics
         {
             double s = q.Sign();
             q = new Quad(q.h - s, q.l) * ~(q + s);
+
             Quad q2 = Sqr(q);
             Quad p = q *= inv2ln2;
-            for (int i = 3; i <= 41; i+=2)
+            for (int i = 3; i <= 43; i+=2)
             {
-                p *= q2;
+                p = p * q2;
                 q += p / i;
             }
             return q;
@@ -671,9 +672,9 @@ namespace Sabs.Numerics
         {
             Quad p = q *= ln2;
             Quad q1 = q;
-            for (int i = 2; i <= 22; i++)
+            for (int i = 2; i <= 23; i++)
             {
-                p *= q1 / i;
+                p = p * q1 / i;
                 q += p;
             }
             return q;
