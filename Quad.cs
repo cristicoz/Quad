@@ -29,6 +29,7 @@ namespace Sabs.Numerics
         public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / 18014398509481984 };
 
         public static readonly Quad E; // = Parse("2.718281828459045235360287471352662498");
+        public static readonly Quad PI; // = Parse("3.141592653589793238462643383279502884");
         private static readonly Quad sqrt2; // = Parse(1.414213562373095048801688724209698");
         private static readonly Quad ln2; // = Parse("0.693147180559945309417232121458176568");
         // helper constant 2/ln(2)
@@ -41,6 +42,9 @@ namespace Sabs.Numerics
             //E = new Quad(PowHelp(ln2 = 1), 1);
             E = Pow(new Quad(1, PowHelp(ln2 = 0.5)), 4);
             ln2 = LogHelp2(sqrt2 = Sqrt(inv2ln2 = 2));
+            //PI = AtanHelp(~((Sqrt(3) + sqrt2) * (sqrt2 + 1))) * 24;
+            PI = AtanHelp(~(Sqrt(4 + sqrt2 * 2) + (sqrt2 + 1)));
+            PI.Scale(16);
             inv2ln2 = ~ln2;
             //inv2ln2.l -= 6.1629758220391547E-32;
             ln2.Scale(2);
@@ -659,6 +663,19 @@ namespace Sabs.Numerics
 
             Quad q2 = Sqr(q);
             Quad p = q *= inv2ln2;
+            for (int i = 3; i <= 43; i+=2)
+            {
+                p = p * q2;
+                q += p / i;
+            }
+            return q;
+        }
+
+        // optimal input range : -tan(pi/16) - tan(pi/16)
+        private static Quad AtanHelp(Quad q)
+        {
+            Quad q2 = -Sqr(q);
+            Quad p = q;
             for (int i = 3; i <= 43; i+=2)
             {
                 p = p * q2;
