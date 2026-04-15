@@ -27,7 +27,6 @@ namespace Sabs.Numerics
         public static readonly Quad NegativeInfinity = double.NegativeInfinity;
         public static readonly Quad MaxValue = new Quad() { h = double.MaxValue, l = double.MaxValue / 18014398509481984 };
         public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / 18014398509481984 };
-        public static readonly Quad K = new Quad() { h = 13510798882111488.0 * (1L << 51), l = 1.5 * (1L << 51)};
 
         public static readonly Quad E; // = Parse("2.718281828459045235360287471352662498");
         public static readonly Quad PI; // = Parse("3.141592653589793238462643383279502884");
