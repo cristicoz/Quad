@@ -27,6 +27,7 @@ namespace Sabs.Numerics
         public static readonly Quad NegativeInfinity = double.NegativeInfinity;
         public static readonly Quad MaxValue = new Quad() { h = double.MaxValue, l = double.MaxValue / 18014398509481984 };
         public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / 18014398509481984 };
+        public static readonly Quad K = new Quad() { h = 13510798882111488.0 * (1L << 51), l = 1.5 * (1L << 51)};
 
         public static readonly Quad E; // = Parse("2.718281828459045235360287471352662498");
         public static readonly Quad PI; // = Parse("3.141592653589793238462643383279502884");
@@ -386,35 +387,6 @@ namespace Sabs.Numerics
             return r;
         }
 
-        public static Quad Round(Quad q)
-        {
-            Quad r;
-            r.h = Math.Round(q.h + q.l);
-            r.l = Math.Round((double.IsInfinity(r.h) ? 0 : q.h - r.h) + q.l);
-            return r;
-        }
-
-        public static Quad Floor(Quad q)
-        {
-            Quad r;
-            r.h = Math.Floor(q.h + q.l);
-            r.l = Math.Floor((double.IsInfinity(r.h) ? 0 : q.h - r.h) + q.l);
-            return r;
-        }
-
-        public void Trim()
-        {
-            //double s = h * (1.0);
-            //double t = s * 0x10000000000001L;
-            //t = (s - t) + t;
-            double t = h - h * (1.0 * 0x1fffffffffffffL / 0x20000000000000L);
-            t *= 4;
-            if (t * l < 0)
-                l = (l - t) + t;
-            else
-                l = (l + t) - t;
-        }
-
         public static Quad Abs(Quad x)
         {
             if (x.h < 0.0)
@@ -637,6 +609,44 @@ namespace Sabs.Numerics
             l *= BitConverter.Int64BitsToDouble(t);
         }
 
+        public static Quad Sin(Quad q)
+        {
+            Quad d = q * ~PI;
+            double h = d.h + 6755399441055744.0 * (1L << 51) - 6755399441055744.0 * (1L << 51);
+            double l = d.h - h;
+            l = 1.5 * (1L << 51) + l + d.l;
+            long t = BitConverter.DoubleToInt64Bits(l);
+            l -= 1.5 * (1L << 51);
+
+            q -= Prod(h, PI.h);
+            q -= Prod(l, PI.h);
+            q -= Prod(h, PI.l);
+            q -= Prod(l, PI.l);
+            q -= Prod(h, -2.994769809718339658E-33);
+            q -= Prod(l, -2.994769809718339658E-33);
+            q = ((t & 1) == 0) ? SinHelp(q) : CosHelp(q);
+            return ((t & 2) == 0) ? q : -q;
+        }
+
+        public static Quad Cos(Quad q)
+        {
+            Quad d = q * ~PI;
+            double h = d.h + 6755399441055744.0 * (1L << 51) - 6755399441055744.0 * (1L << 51);
+            double l = d.h - h;
+            l = 1.5 * (1L << 51) + l + d.l;
+            long t = BitConverter.DoubleToInt64Bits(l) + 1;
+            l -= 1.5 * (1L << 51);
+
+            q -= Prod(h, PI.h);
+            q -= Prod(l, PI.h);
+            q -= Prod(h, PI.l);
+            q -= Prod(l, PI.l);
+            q -= Prod(h, -2.994769809718339658E-33);
+            q -= Prod(l, -2.994769809718339658E-33);
+            q = ((t & 1) == 0) ? SinHelp(q) : CosHelp(q);
+            return ((t & 2) == 0) ? q : -q;
+        }
+
         // slow convergence
         // optimal input range -1/3 - 1/3
         private static Quad LogHelp1(Quad q)
@@ -680,6 +690,33 @@ namespace Sabs.Numerics
             {
                 p = p * q2;
                 q += p / i;
+            }
+            return q;
+        }
+
+        private static Quad SinHelp(Quad q)
+        {
+            Quad q2 = Sqr(q);
+            q2.Scale(-0.5);
+            Quad p = q;
+            for (int i = 1; i <= 13; i++)
+            {
+                p = p * q2 / (i * ((i << 1) + 1));
+                q += p;
+            }
+            return q;
+        }
+
+        private static Quad CosHelp(Quad q)
+        {
+            Quad q2 = Sqr(q);
+            q2.Scale(-0.5);
+            Quad p = q2;
+            q = 1 + p;
+            for (int i = 2; i <= 14; i++)
+            {
+                p = p * q2 / (i * ((i << 1) - 1));
+                q += p;
             }
             return q;
         }
