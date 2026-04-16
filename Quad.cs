@@ -29,9 +29,14 @@ namespace Sabs.Numerics
         public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / 18014398509481984 };
 
         public static readonly Quad E; // = Parse("2.718281828459045235360287471352662498");
+        // e1: 2.718281828459045, e2: 2.3536728122053305e-16, e3: -2.1643445851410196e-32, e4: -1.0478056262447993e-48
         public static readonly Quad PI; // = Parse("3.141592653589793238462643383279502884");
+        // helper constant for argument range reduction for sin and cos
+        private static readonly Quad pilow = new Quad() { h = -2.9947698097183397e-33, l = 1.1124542208633653e-49 };
+        // pi1: 3.141592653589793, pi2: 1.2246467991473532e-16, pi3: -2.9947698097183397e-33, pi4: 1.1124542208633653e-49
         private static readonly Quad sqrt2; // = Parse(1.414213562373095048801688724209698");
         private static readonly Quad ln2; // = Parse("0.693147180559945309417232121458176568");
+        // ln2_1: 0.6931471805599453, ln2_2: 2.3190468138462996e-17 ln2_3: 1.246116740312015e-33, ln2_4: 4.831093126581452e-50
         // helper constant 2/ln(2)
         private static readonly Quad inv2ln2; // = Parse("2.885390081777926814719849362003784");
         // helper constant 1/log2(10)
@@ -610,38 +615,31 @@ namespace Sabs.Numerics
 
         public static Quad Sin(Quad q)
         {
-            Quad d = q * ~PI;
-            double h = d.h + 6755399441055744.0 * (1L << 51) - 6755399441055744.0 * (1L << 51);
-            double l = d.h - h;
-            l = 1.5 * (1L << 51) + l + d.l;
-            long t = BitConverter.DoubleToInt64Bits(l);
-            l -= 1.5 * (1L << 51);
-
-            q -= Prod(h, PI.h);
-            q -= Prod(l, PI.h);
-            q -= Prod(h, PI.l);
-            q -= Prod(l, PI.l);
-            q -= Prod(h, -2.994769809718339658E-33);
-            q -= Prod(l, -2.994769809718339658E-33);
-            q = ((t & 1) == 0) ? SinHelp(q) : CosHelp(q);
-            return ((t & 2) == 0) ? q : -q;
+            return SinCos(q, 0);
         }
 
         public static Quad Cos(Quad q)
+        {
+            return SinCos(q, 1);
+        }
+
+        public static Quad SinCos(Quad q, int quadrant)
         {
             Quad d = q * ~PI;
             double h = d.h + 6755399441055744.0 * (1L << 51) - 6755399441055744.0 * (1L << 51);
             double l = d.h - h;
             l = 1.5 * (1L << 51) + l + d.l;
-            long t = BitConverter.DoubleToInt64Bits(l) + 1;
+            long t = BitConverter.DoubleToInt64Bits(l) + quadrant;
             l -= 1.5 * (1L << 51);
 
             q -= Prod(h, PI.h);
             q -= Prod(l, PI.h);
             q -= Prod(h, PI.l);
             q -= Prod(l, PI.l);
-            q -= Prod(h, -2.994769809718339658E-33);
-            q -= Prod(l, -2.994769809718339658E-33);
+            q -= Prod(h, pilow.h);
+            q -= Prod(l, pilow.h);
+            q -= Prod(h, pilow.l);
+            q -= Prod(l, pilow.l);
             q = ((t & 1) == 0) ? SinHelp(q) : CosHelp(q);
             return ((t & 2) == 0) ? q : -q;
         }
@@ -710,14 +708,13 @@ namespace Sabs.Numerics
         {
             Quad q2 = Sqr(q);
             q2.Scale(-0.5);
-            Quad p = q2;
-            q = 1 + p;
+            Quad p = q = q2;
             for (int i = 2; i <= 14; i++)
             {
                 p = p * q2 / (i * ((i << 1) - 1));
                 q += p;
             }
-            return q;
+            return 1 + q;
         }
 
         // optimal input range : -0.5 - +0.5
