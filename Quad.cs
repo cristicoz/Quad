@@ -129,7 +129,7 @@ namespace Sabs.Numerics
             return v + q.ToLong();
         }
 
-        public static decimal ToDecimal(Quad q, int decimals)
+        public static decimal ToDecimal(Quad q, int decimals, MidpointRounding mode)
         {
             double v = Log2(q.h);
             long h, l;
@@ -144,12 +144,13 @@ namespace Sabs.Numerics
             q.Scale(Pow2(n - 43));
             q *= Pow((double)s, n);
 
-            h = (long)(q.h);
-            v = (q.h - h + q.l);
+            h = (long)q.h;
+            v = q.h - h + q.l;
+            v *= (1L << 43);
 
             // check for underestimate
             if (n < decimals && (h < 0x3333333333333L ||
-                (h == 0x3333333333333L && v < 0.199999999999994321)))
+                (h == 0x3333333333333L && v < 1759218604441.55)))
             {
                 h *= 10;
                 v *= 10;
@@ -157,9 +158,9 @@ namespace Sabs.Numerics
             }
 
             // round the last 4 bits
-            //double t = (h - h * 0.9999999999999999) * 43980465111040;
+            //double t = (h - h * 0.9999999999999999) * 5;
             //v = (v + t) - t;
-            l = (long)Math.Round(v * 8796093022208.0);
+            l = (long)(mode == MidpointRounding.ToEven ? Math.Round(v) : (v + 0.5));
             h = (h << 11) + (l >> 32);
 
             return new decimal(unchecked((int)l), unchecked((int)h), (int)(h >> 32), s < 0, (byte)n);
@@ -167,7 +168,7 @@ namespace Sabs.Numerics
 
         public static explicit operator decimal(Quad q)
         {
-            return ToDecimal(q, 28);
+            return ToDecimal(q, 28, MidpointRounding.ToEven);
         }
 
         public static implicit operator Quad(double v)
@@ -296,6 +297,7 @@ namespace Sabs.Numerics
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad Split(double v)
         {
             Quad r;
@@ -304,6 +306,7 @@ namespace Sabs.Numerics
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad Split2(double v)
         {
             Quad r;
@@ -363,6 +366,7 @@ namespace Sabs.Numerics
             return (p * -t) + t;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quad operator -(Quad q)
         {
             q.h = -q.h;
@@ -370,6 +374,7 @@ namespace Sabs.Numerics
             return q;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FastAdd(double v)
         {
             double t = (l + v) + h;
@@ -377,12 +382,14 @@ namespace Sabs.Numerics
             h = t;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Scale(double v)
         {
             h *= v;
             l *= v;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double Sign()
         {
             double r = this.h;
@@ -623,23 +630,19 @@ namespace Sabs.Numerics
             return SinCos(q, 1);
         }
 
+        // maximal input range -PI*2^102 - PI*2^102
         public static Quad SinCos(Quad q, int quadrant)
         {
             Quad d = q * ~PI;
-            double h = d.h + 6755399441055744.0 * (1L << 51) - 6755399441055744.0 * (1L << 51);
-            double l = d.h - h;
-            l = 1.5 * (1L << 51) + l + d.l;
+            double h = d.h + 1.5 * (1L << 52) * (1L << 51) - 1.5 * (1L << 52) * (1L << 51);
+            double l = (d.h - h) + 1.5 * (1L << 51) + d.l;
             long t = BitConverter.DoubleToInt64Bits(l) + quadrant;
             l -= 1.5 * (1L << 51);
 
-            q -= Prod(h, PI.h);
-            q -= Prod(l, PI.h);
-            q -= Prod(h, PI.l);
-            q -= Prod(l, PI.l);
-            q -= Prod(h, pilow.h);
-            q -= Prod(l, pilow.h);
-            q -= Prod(h, pilow.l);
-            q -= Prod(l, pilow.l);
+            q = q - Prod(h, PI.h) - Prod(l, PI.h);
+            q = q - Prod(h, PI.l) - Prod(l, PI.l);
+            q = q - Prod(h, pilow.h) - Prod(l, pilow.h);
+            q = q - Prod(h, pilow.l) - Prod(l, pilow.l);
             q = ((t & 1) == 0) ? SinHelp(q) : CosHelp(q);
             return ((t & 2) == 0) ? q : -q;
         }
