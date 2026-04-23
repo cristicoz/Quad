@@ -45,14 +45,12 @@ namespace Sabs.Numerics
         static Quad()
         {
             //E = new Quad(PowHelp(ln2 = 1), 1);
-            E = Pow(new Quad(1, PowHelp(ln2 = 0.5)), 4);
-            ln2 = LogHelp2(sqrt2 = Sqrt(inv2ln2 = 2));
-            //PI = AtanHelp(~((Sqrt(3) + sqrt2) * (sqrt2 + 1))) * 24;
-            PI = AtanHelp(~(Sqrt(4 + sqrt2 * 2) + (sqrt2 + 1)));
-            PI.Scale(16);
-            inv2ln2 = ~ln2;
+            E = Pow(PowHelp(ln2 = 0.5), 4);
+            inv2ln2 = ~(ln2 = LogHelp2(sqrt2 = Sqrt(inv2ln2 = 2)));
             //inv2ln2.l -= 6.1629758220391547E-32;
             ln2.Scale(2);
+            //PI = AtanHelp(~((Sqrt(3) + sqrt2) * (sqrt2 + 1))) * 24;
+            PI = AtanHelp(~(Sqrt(4 + sqrt2 * 2) + (sqrt2 + 1))) * 16;
             invlg10 = ~Log2((Quad)10);
         }
 
@@ -144,9 +142,8 @@ namespace Sabs.Numerics
             q.Scale(Pow2(n - 43));
             q *= Pow((double)s, n);
 
-            h = (long)q.h;
-            v = q.h - h + q.l;
-            v *= (1L << 43);
+            q.h -= (h = (long)q.h);
+            v = (q.h + q.l) * (1L << 43);
 
             // check for underestimate
             if (n < decimals && (h < 0x3333333333333L ||
@@ -163,7 +160,7 @@ namespace Sabs.Numerics
             l = (long)(mode == MidpointRounding.ToEven ? Math.Round(v) : (v + 0.5));
             h = (h << 11) + (l >> 32);
 
-            return new decimal(unchecked((int)l), unchecked((int)h), (int)(h >> 32), s < 0, (byte)n);
+            return new decimal(unchecked((int)l), unchecked((int)h), (int)(h >> 32), s < 0, checked((byte)n));
         }
 
         public static explicit operator decimal(Quad q)
@@ -203,7 +200,7 @@ namespace Sabs.Numerics
             int n = i[3] >> 16;
             //uint[] b = (uint[])(object)i;
 
-            return new Quad(unchecked(((long)(uint)i[2] << 21) + ((uint)i[1] >> 11)) * 8796093022208.0,
+            return new Quad(unchecked(((long)(uint)i[2] << 21) + ((uint)i[1] >> 11)) * (double)(1L << 43),
             unchecked(((long)(i[1] & 0x7ff) << 32) + (uint)i[0])) * Pow(n < 0 ? -10 : 10, -(n & sbyte.MaxValue));
         }
 
@@ -502,8 +499,7 @@ namespace Sabs.Numerics
                 return q.h <= -1075 ? Zero : Epsilon;
             }
 
-            q = new Quad(q.h - v, q.l);
-            q = new Quad(1, PowHelp(q));
+            q = PowHelp(new Quad(q.h - v, q.l));
 
             if (v == 1024) // edge case for values near MaxValue
             {
@@ -717,7 +713,7 @@ namespace Sabs.Numerics
                 p = p * q2 / (i * ((i << 1) - 1));
                 q += p;
             }
-            return 1 + q;
+            return new Quad(1, q);
         }
 
         // optimal input range : -0.5 - +0.5
@@ -730,7 +726,7 @@ namespace Sabs.Numerics
                 p = p * q1 / i;
                 q += p;
             }
-            return q;
+            return new Quad(1, q);
         }
 
         public static Quad Pow(double x, int n)
