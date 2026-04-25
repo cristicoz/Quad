@@ -274,8 +274,9 @@ namespace Sabs.Numerics
         public static Quad operator +(Quad q, Quad v)
         {
             Quad r;
-            r.h = (q.l + v.h) + (q.h + v.l);
-            double t = q.h - r.h;
+            double t = q.h + v.l;
+            r.h = (q.l + v.h) + t;
+            t = t - r.h;
             r.l = (t + v.h) + q.l;
             t = q.h - (r.h + t);
             r.l = (r.l + t) + v.l;
@@ -286,8 +287,9 @@ namespace Sabs.Numerics
         public static Quad operator -(Quad q, Quad v)
         {
             Quad r;
-            r.h = (q.l - v.h) + (q.h - v.l);
-            double t = q.h - r.h;
+            double t = q.h - v.l;
+            r.h = (q.l - v.h) + t;
+            t = t - r.h;
             r.l = (t - v.h) + q.l;
             t = q.h - (r.h + t);
             r.l = (r.l + t) - v.l;
