@@ -253,9 +253,10 @@ namespace Sabs.Numerics
         {
             Quad r;
             r.h = (v + q.l) + q.h;
-            r.l = q.h - r.h;
-            v = (v + r.l) + q.l;
-            r.l = q.h - (r.h + r.l) + v;
+            double t = q.h - r.h;
+            v = (v + t) + q.l;
+            t = q.h - (r.h + t);
+            r.l = t + v;
             return r;
         }
 
@@ -264,9 +265,10 @@ namespace Sabs.Numerics
         {
             Quad r;
             r.h = (q.l - v) + q.h;
-            r.l = q.h - r.h;
-            v = (r.l - v) + q.l;
-            r.l = q.h - (r.h + r.l) + v;
+            double t = q.h - r.h;
+            v = (t - v) + q.l;
+            t = q.h - (r.h + t);
+            r.l = t + v;
             return r;
         }
 
@@ -277,9 +279,9 @@ namespace Sabs.Numerics
             double t = q.h + v.l;
             r.h = (q.l + v.h) + t;
             t = t - r.h;
-            r.l = (t + v.h) + q.l;
-            t = q.h - (r.h + t);
-            r.l = (r.l + t) + v.l;
+            double s = (t + v.h) + q.l;
+            t = q.h - (r.h + t) + v.l;
+            r.l = t + s;
             return r;
         }
 
@@ -290,9 +292,9 @@ namespace Sabs.Numerics
             double t = q.h - v.l;
             r.h = (q.l - v.h) + t;
             t = t - r.h;
-            r.l = (t - v.h) + q.l;
-            t = q.h - (r.h + t);
-            r.l = (r.l + t) - v.l;
+            double s = (t - v.h) + q.l;
+            t = q.h - (r.h + t) - v.l;
+            r.l = t + s;
             return r;
         }
 
