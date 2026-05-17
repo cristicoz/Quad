@@ -25,8 +25,8 @@ namespace Sabs.Numerics
         public static readonly Quad Epsilon = double.Epsilon;
         public static readonly Quad PositiveInfinity = double.PositiveInfinity;
         public static readonly Quad NegativeInfinity = double.NegativeInfinity;
-        public static readonly Quad MaxValue = new Quad() { h = double.MaxValue, l = double.MaxValue / 18014398509481984 };
-        public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / 18014398509481984 };
+        public static readonly Quad MaxValue = new Quad() { h = double.MaxValue, l = double.MaxValue / (1L << 54) };
+        public static readonly Quad MinValue = new Quad() { h = double.MinValue, l = double.MinValue / (1L << 54) };
 
         public static readonly Quad E; // = Parse("2.718281828459045235360287471352662498");
         // e1: 2.718281828459045, e2: 2.3536728122053305e-16, e3: -2.1643445851410196e-32, e4: -1.0478056262447993e-48
@@ -49,8 +49,8 @@ namespace Sabs.Numerics
             inv2ln2 = ~(ln2 = LogHelp2(sqrt2 = Sqrt(inv2ln2 = 2)));
             //inv2ln2.l -= 6.1629758220391547E-32;
             ln2.Scale(2);
-            //PI = AtanHelp(~((Sqrt(3) + sqrt2) * (sqrt2 + 1))) * 24;
-            PI = AtanHelp(~(Sqrt(4 + sqrt2 * 2) + (sqrt2 + 1))) * 16;
+            //PI = AtanHelp(~((Sqrt(3) + sqrt2) * new Quad(sqrt2, 1))) * 24;
+            PI = AtanHelp(~(Sqrt(new Quad(2, sqrt2) * 2) + new Quad(sqrt2, 1))) * 16;
             invlg10 = ~Log2((Quad)10);
         }
 
@@ -280,8 +280,8 @@ namespace Sabs.Numerics
             r.h = (q.l + v.h) + t;
             t = t - r.h;
             double s = (t + v.h) + q.l;
-            t = q.h - (r.h + t) + v.l;
-            r.l = t + s;
+            t = q.h - (r.h + t);
+            r.l = (t + v.l) + s;
             return r;
         }
 
@@ -293,8 +293,8 @@ namespace Sabs.Numerics
             r.h = (q.l - v.h) + t;
             t = t - r.h;
             double s = (t - v.h) + q.l;
-            t = q.h - (r.h + t) - v.l;
-            r.l = t + s;
+            t = q.h - (r.h + t);
+            r.l = (t - v.l) + s;
             return r;
         }
 
@@ -433,9 +433,8 @@ namespace Sabs.Numerics
         {
             double t = q.h / v;
             Quad r = Prod(t, v);
-            double s = (q.h - r.h) + q.l - r.l;
+            r.l = (((q.h - r.h) + q.l) - r.l) / v;
             r.h = t;
-            r.l = s / v;
             return r;
         }
 
@@ -450,26 +449,17 @@ namespace Sabs.Numerics
 
         public static Quad operator *(Quad q, Quad v)
         {
-            double t, s, p = q.l * v.l;
+            double t = q.l * v.l;
             Quad r = Prod(q.h, v.h);
-            Quad r1 = Prod(q.h, v.l);
-            s = (p + r1.l) + r.l;
-            t = (r.l - s) + r1.l;
-            r.l = s;
-            p = p + t;
-            s = (r.l + r1.h) + r.h;
-            t = (r.h - s) + r1.h;
-            r.h = s;
-            r.l = r.l + t;
-            Quad r2 = Prod(q.l, v.h);
-            s = (p + r2.l) + r.l;
-            t = (r.l - s) + r2.l;
-            r.l = s;
-            p = p + t;
-            s = (r.l + r2.h) + r.h;
-            t = (r.h - s) + r2.h;
-            r.h = s;
-            r.l = (r.l + t) + p;
+            Quad p = Prod(q.h, v.l);
+            p.FastAdd(t);
+            r.FastAdd(p.h);
+
+            t = p.l;
+            p = Prod(q.l, v.h);
+            p.FastAdd(t);
+            r.FastAdd(p.h);
+            r.l += p.l;
             return r;
         }
 
@@ -655,11 +645,8 @@ namespace Sabs.Numerics
             Quad p = q *= inv2ln2;
             for (int i = 2; i <= 67; i++)
             {
-                p *= q1;
-                Quad t = q + p / i;
-                if (t.h == q.h && t.l == q.l)
-                    break;
-                q = t;
+                p  = p * q1;
+                q += p / i;
             }
             return q;
         }
@@ -995,13 +982,12 @@ namespace Sabs.Numerics
             q.Scale(Pow2(10 - exp));
             q *= Pow(this.h < 0 ? -5 : 5, 10 - exp);
 
-            v = .5e-24;
+            v = 0;
             // round the last digit
-            q.FMA(1, ref v);
+            //q.FastAdd(.5e-24);
             // check for underestimate
             if (q.CompareTo(1E10) < 0)
             {
-                v *= 10;
                 q.FMA(10, ref v);
                 exp--;
             }
